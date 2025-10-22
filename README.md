@@ -84,7 +84,7 @@ automata-workflows/
 ### Prerequisites
 - Python 3.14+ (UV will manage the Python version)
 - [UV](https://docs.astral.sh/uv/) - Modern Python package manager
-- Docker and Docker Compose
+- Podman and Podman Compose
 - Temporal CLI tools
 - PostgreSQL 15+
 
@@ -119,7 +119,7 @@ automata-workflows/
 
 5. **Start Temporal development environment**
    ```bash
-   docker-compose up -d temporal
+   podman-compose up -d temporal
    ```
 
 6. **Run database migrations**
@@ -141,7 +141,7 @@ uv run python scripts/run_workflow.py --workflow code_review --input '{"pr_id": 
 #### Production Mode
 ```bash
 # Deploy all workers
-docker-compose up -d workers
+podman-compose up -d workers
 
 # Monitor workflow execution
 temporal workflow list --namespace automata
@@ -247,7 +247,7 @@ temporal workflow list --namespace automata
 ### Local Development
 ```bash
 # Run all services locally
-docker-compose up -d
+podman-compose up -d
 
 # Start workers in development mode
 uv run python scripts/dev_server.py

@@ -21,12 +21,13 @@ classifiers = [
     "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Distributed Computing",
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     # Core Temporal
     "temporalio>=1.4.0",

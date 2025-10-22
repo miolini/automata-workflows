@@ -59,8 +59,8 @@ async def get_pull_request_details(input: PullRequestInfo) -> PullRequestDetails
         
         return PullRequestDetails(
             pr_info=input,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
             mergeable=True,
             mergeable_state="clean",
             additions=150,

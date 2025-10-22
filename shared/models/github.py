@@ -4,7 +4,7 @@ GitHub-related data models for Automata Workflows
 
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class PullRequestInfo(BaseModel):
@@ -20,10 +20,11 @@ class PullRequestInfo(BaseModel):
     labels: List[str] = Field(default_factory=list, description="PR labels")
     post_review_comment: bool = Field(default=True, description="Whether to post review comment")
     
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat()
         }
+    )
 
 
 class PullRequestDetails(BaseModel):
@@ -103,7 +104,7 @@ class ReviewSummary(BaseModel):
     key_findings: List[str] = Field(default_factory=list)
     recommendations: List[str] = Field(default_factory=list)
     approval_recommendation: str
-    review_timestamp: datetime = Field(default_factory=datetime.utcnow)
+    review_timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class CodeReviewResult(BaseModel):
@@ -118,3 +119,70 @@ class CodeReviewResult(BaseModel):
     status: str
     error_message: Optional[str] = None
     execution_time_ms: int = 0
+
+
+class RepositoryCredentials(BaseModel):
+    """Credentials for accessing a repository."""
+    
+    token: Optional[str] = Field(None, description="Access token for private repositories")
+    username: Optional[str] = Field(None, description="Username for authentication")
+    password: Optional[str] = Field(None, description="Password for authentication")
+    ssh_key_path: Optional[str] = Field(None, description="Path to SSH private key")
+    ssh_key_content: Optional[str] = Field(None, description="SSH private key content")
+    
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat()
+        }
+    )
+
+
+class RepositoryInfo(BaseModel):
+    """Information about a repository to be fetched and indexed."""
+    
+    remote_url: str = Field(..., description="Git repository URL")
+    name: str = Field(..., description="Repository name")
+    owner: str = Field(..., description="Repository owner")
+    branch: str = Field(default="main", description="Branch to fetch")
+    credentials: Optional[RepositoryCredentials] = Field(None, description="Repository access credentials")
+    is_private: bool = Field(default=False, description="Whether repository is private")
+    
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat()
+        }
+    )
+
+
+class RepositoryIndex(BaseModel):
+    """Indexed repository information."""
+    
+    repository_id: str
+    name: str
+    owner: str
+    remote_url: str
+    branch: str
+    commit_hash: str
+    file_count: int
+    total_lines: int
+    languages: Dict[str, int] = Field(default_factory=dict)
+    indexed_at: datetime = Field(default_factory=datetime.now)
+    file_paths: List[str] = Field(default_factory=list)
+    
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat()
+        }
+    )
+
+
+class RepositoryIndexingResult(BaseModel):
+    """Result of repository indexing workflow."""
+    
+    repository_info: RepositoryInfo
+    repository_index: Optional[RepositoryIndex] = None
+    status: str
+    error_message: Optional[str] = None
+    execution_time_ms: int = 0
+    files_processed: int = 0
+    files_skipped: int = 0
