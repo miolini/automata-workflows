@@ -1,0 +1,17 @@
+{
+    "model": "z-ai/glm-4.6:exacto",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are an expert software architect specializing in distributed systems, microservices, and AI-driven software engineering. Create detailed technical architecture documents with specific implementation details, API designs, and system integration patterns."
+        },
+        {
+            "role": "user",
+            "content": "Based on the PRD for the recursive self-rewriting system, create a detailed Technical Architecture Document that includes:\n\n1. **System Architecture Overview**\n   - High-level component diagram\n   - Service interactions and data flow\n   - Technology stack recommendations\n\n2. **Core Component Architecture**\n   - Codebase Analysis Engine: parsing, AST analysis, dependency mapping\n   - Code Generation Engine: LLM integration, prompt engineering, template system\n   - Validation Engine: testing framework, sandboxing, rollback mechanisms\n   - Pattern Learning Engine: ML models, pattern recognition, knowledge base\n   - Deployment Engine: CI/CD integration, blue-green deployments, monitoring\n\n3. **Data Architecture**\n   - Schema designs for code repository, patterns, metrics\n   - Event streaming and messaging patterns\n   - Caching strategies and performance optimization\n\n4. **API Design**\n   - RESTful APIs for external integration\n   - Internal service communication protocols\n   - Function calling interfaces and schemas\n\n5. **Security Architecture**\n   - Authentication and authorization patterns\n   - Code signing and integrity verification\n   - Sandboxing and isolation mechanisms\n\n6. **Scalability and Performance**\n   - Horizontal scaling strategies\n   - Load balancing and resource management\n   - Performance monitoring and optimization\n\nBe specific about technologies, frameworks, and implementation patterns. Include code examples where relevant."
+        }
+    ],
+    "parameters": {
+        "max_tokens": 16384,
+        "temperature": 0.5
+    }
+}

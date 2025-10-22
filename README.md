@@ -104,7 +104,8 @@ automata-workflows/
 
 3. **Set up the project with UV**
    ```bash
-   uv sync
+   make install
+   # or: uv sync
    ```
    This will:
    - Create a virtual environment in `.venv/`
@@ -117,25 +118,51 @@ automata-workflows/
    # Edit .env with your configuration
    ```
 
-5. **Start Temporal development environment**
+5. **Start development environment**
    ```bash
-   podman-compose up -d temporal
+   make dev
    ```
+   This will:
+   - Install dependencies
+   - Start Temporal development environment
+   - Prepare the system for workflow execution
 
 6. **Run database migrations**
    ```bash
-   uv run python scripts/migrate_db.py
+   make migrate
+   # or: uv run python scripts/migrate_db.py
    ```
 
 ### Running Workflows
 
-#### Development Mode
+#### Quick Start with Makefile
+```bash
+# Show current configuration
+make config
+
+# Start all workflow workers
+make worker
+
+# Start only LLM inference worker
+make worker-llm
+
+# Quick test of LLM inference
+make test-llm
+
+# Run any workflow interactively
+make workflow
+```
+
+#### Manual Development Mode
 ```bash
 # Start workflow workers
-uv run python scripts/run_workers.py --workflow coding_automation
+uv run python scripts/run_workers.py --workflow llm_inference
 
-# Run individual workflow
-uv run python scripts/run_workflow.py --workflow code_review --input '{"pr_id": 123}'
+# Run individual workflow with JSON input
+uv run python scripts/run_workflow.py --workflow llm_inference --input '{"model": "glm-4.6", "messages": [{"role": "user", "content": "Hello"}]}'
+
+# Run workflow with input file
+uv run python scripts/run_workflow.py --workflow llm_inference --input-file examples/llm_test_input.json
 ```
 
 #### Production Mode
@@ -144,7 +171,21 @@ uv run python scripts/run_workflow.py --workflow code_review --input '{"pr_id": 
 podman-compose up -d workers
 
 # Monitor workflow execution
-temporal workflow list --namespace automata
+temporal workflow list --namespace default
+```
+
+### Development Commands
+
+```bash
+# Code quality
+make lint          # Run linting and type checking
+make format        # Format code with black and isort
+make test          # Run tests with coverage
+make clean         # Clean up cache files
+
+# Configuration
+make config        # Show current configuration
+make help          # Show all available commands
 ```
 
 ## Workflow Development

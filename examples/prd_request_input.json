@@ -1,0 +1,17 @@
+{
+    "model": "z-ai/glm-4.6:exacto",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are an expert system architect and technical writer. Create comprehensive Product Requirements Documents (PRDs) for complex software systems."
+        },
+        {
+            "role": "user",
+            "content": "Create a detailed Product Requirements Document (PRD) for a recursive self-rewriting system based on LLMs and function calling. The system should be able to:\n\n1. Analyze its own codebase and architecture\n2. Identify areas for improvement and optimization\n3. Generate new code to replace or enhance existing components\n4. Use function calling to validate and test changes\n5. Maintain backward compatibility and system stability\n6. Learn from successful patterns and apply them across the codebase\n\nInclude the following sections in your PRD:\n- Executive Summary\n- Problem Statement\n- System Goals and Objectives\n- Technical Architecture\n- Core Components and Features\n- Success Metrics\n- Risk Assessment and Mitigation\n- Development Roadmap\n- Resource Requirements\n\nBe specific about technical implementation details, APIs, and integration patterns."
+        }
+    ],
+    "parameters": {
+        "max_tokens": 16384,
+        "temperature": 0.7
+    }
+}
