@@ -67,7 +67,7 @@ automata-workflows/
 ## Technology Stack
 
 ### Core Dependencies
-- **Python 3.11+**: Modern Python with async/await support
+- **Python 3.14+**: Latest Python with advanced async/await and pattern matching
 - **Temporal.io**: Durable workflow execution engine
 - **Pydantic**: Data validation and serialization
 - **AsyncIO**: Asynchronous programming support
@@ -82,7 +82,7 @@ automata-workflows/
 ## Development Setup
 
 ### Prerequisites
-- Python 3.11+ (UV will manage the Python version)
+- Python 3.14+ (UV will manage the Python version)
 - [UV](https://docs.astral.sh/uv/) - Modern Python package manager
 - Docker and Docker Compose
 - Temporal CLI tools

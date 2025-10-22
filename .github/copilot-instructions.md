@@ -57,10 +57,11 @@ except Exception as e:
 ## Development Standards
 
 ### Python Version
-- Use Python 3.11+ features (type hints, async/await, structural pattern matching)
+- Use Python 3.14+ features (type hints, async/await, structural pattern matching, advanced typing)
 - Follow PEP 8 style guidelines
 - Use Black for code formatting
 - Use isort for import sorting
+- Leverage modern Python syntax and performance improvements
 
 ### Type Safety
 - Use Pydantic models for all input/output data structures

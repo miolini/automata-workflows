@@ -21,13 +21,12 @@ classifiers = [
     "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Distributed Computing",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     # Core Temporal
     "temporalio>=1.4.0",
@@ -40,7 +39,7 @@ dependencies = [
     "httpx>=0.25.0",
     
     # Database
-    "asyncpg>=0.29.0",
+    "aiosqlite>=0.20.0",
     "sqlalchemy[asyncio]>=2.0.0",
     
     # Logging
@@ -118,7 +117,7 @@ exclude = ["tests*"]
 # Black configuration
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py313']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -144,7 +143,7 @@ known_third_party = ["temporalio", "pydantic", "httpx", "asyncpg", "sqlalchemy"]
 
 # mypy configuration
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -191,6 +190,12 @@ markers = [
     "temporal: marks tests that require Temporal",
 ]
 asyncio_mode = "auto"
+pythonpath = ["."]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
 
 # Coverage configuration
 [tool.coverage.run]
@@ -219,7 +224,7 @@ exclude_lines = [
 
 # Ruff configuration
 [tool.ruff]
-target-version = "py311"
+target-version = "py314"
 line-length = 88
 select = [
     "E",  # pycodestyle errors
