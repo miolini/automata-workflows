@@ -82,40 +82,49 @@ automata-workflows/
 ## Development Setup
 
 ### Prerequisites
-- Python 3.11+
+- Python 3.11+ (UV will manage the Python version)
+- [UV](https://docs.astral.sh/uv/) - Modern Python package manager
 - Docker and Docker Compose
 - Temporal CLI tools
 - PostgreSQL 15+
 
 ### Installation
 
-1. **Clone the repository**
+1. **Install UV** (if not already installed)
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   # or with pip: pip install uv
+   ```
+
+2. **Clone the repository**
    ```bash
    git clone https://github.com/sentientwave/automata-workflows.git
    cd automata-workflows
    ```
 
-2. **Set up Python environment**
+3. **Set up the project with UV**
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -e .
+   uv sync
    ```
+   This will:
+   - Create a virtual environment in `.venv/`
+   - Install all dependencies from `pyproject.toml`
+   - Generate a `uv.lock` file for reproducible builds
 
-3. **Configure environment**
+4. **Configure environment**
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
-4. **Start Temporal development environment**
+5. **Start Temporal development environment**
    ```bash
    docker-compose up -d temporal
    ```
 
-5. **Run database migrations**
+6. **Run database migrations**
    ```bash
-   python scripts/migrate_db.py
+   uv run python scripts/migrate_db.py
    ```
 
 ### Running Workflows
@@ -123,10 +132,10 @@ automata-workflows/
 #### Development Mode
 ```bash
 # Start workflow workers
-python scripts/run_workers.py --workflow coding_automation
+uv run python scripts/run_workers.py --workflow coding_automation
 
 # Run individual workflow
-python scripts/run_workflow.py --workflow code_review --input '{"pr_id": 123}'
+uv run python scripts/run_workflow.py --workflow code_review --input '{"pr_id": 123}'
 ```
 
 #### Production Mode
@@ -241,7 +250,7 @@ temporal workflow list --namespace automata
 docker-compose up -d
 
 # Start workers in development mode
-python scripts/dev_server.py
+uv run python scripts/dev_server.py
 ```
 
 ### Staging Environment
@@ -250,7 +259,7 @@ python scripts/dev_server.py
 kubectl apply -f k8s/staging/
 
 # Run smoke tests
-python scripts/smoke_tests.py --env staging
+uv run python scripts/smoke_tests.py --env staging
 ```
 
 ### Production Deployment
@@ -259,8 +268,52 @@ python scripts/smoke_tests.py --env staging
 kubectl apply -f k8s/production/
 
 # Verify deployment
-python scripts/health_check.py --env production
+uv run python scripts/health_check.py --env production
 ```
+
+## UV Package Management
+
+This project uses [UV](https://docs.astral.sh/uv/) for modern Python package management. UV provides:
+
+- **Fast dependency resolution** (10-100x faster than pip)
+- **Deterministic builds** with lock files
+- **Virtual environment management**
+- **Unified dependency management**
+
+### Common UV Commands
+
+```bash
+# Install dependencies
+uv sync
+
+# Add a new dependency
+uv add requests
+
+# Add a development dependency
+uv add --dev pytest
+
+# Run commands in the project environment
+uv run python scripts/run_workflow.py
+
+# Update dependencies
+uv sync --upgrade
+
+# Show dependency tree
+uv tree
+
+# Check for outdated packages
+uv pip list --outdated
+```
+
+### Virtual Environment
+
+UV automatically creates and manages a virtual environment in `.venv/`. To activate it manually:
+
+```bash
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+However, it's recommended to use `uv run` instead of activating the environment directly.
 
 ## Configuration
 

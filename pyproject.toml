@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "automata-workflows"
@@ -23,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Distributed Computing",
 ]
@@ -107,13 +108,12 @@ automata-workers = "scripts.run_workers:main"
 automata-workflow = "scripts.run_workflow:main"
 automata-migrate = "scripts.migrate_db:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["shared*", "workflows*", "scripts*"]
+[tool.hatch.build.targets.wheel]
+packages = ["shared", "workflows", "scripts"]
 exclude = ["tests*"]
 
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml", "*.json", "*.toml"]
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
 
 # Black configuration
 [tool.black]
@@ -244,3 +244,27 @@ ignore = [
 [tool.bandit]
 exclude_dirs = ["tests", "build", "dist"]
 skips = ["B101", "B601"]
+
+# UV configuration
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=23.10.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+    "flake8>=6.1.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.5.0",
+    "ipython>=8.16.0",
+]
+
+# UV workspace configuration (for future monorepo support)
+# Note: Uncomment when converting to monorepo structure
+# [tool.uv.workspace]
+# members = [
+#     "workflows/*",
+#     "shared/*",
+# ]
