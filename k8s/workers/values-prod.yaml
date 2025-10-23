@@ -1,0 +1,94 @@
+# Production environment values for Automata workers
+
+temporal:
+  host: "temporal-frontend"
+  port: 7233
+  namespace: "default"
+
+workers:
+  llm_inference:
+    enabled: true
+    replicaCount: 3
+    image:
+      repository: automata-workflows
+      pullPolicy: IfNotPresent
+      tag: "latest"
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+    env:
+      - name: LOG_LEVEL
+        value: "INFO"
+      - name: ENVIRONMENT
+        value: "production"
+      - name: MAX_CONCURRENT_WORKFLOWS
+        value: "100"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                - llm_inference
+            topologyKey: kubernetes.io/hostname
+            
+  repository_indexing:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: automata-workflows
+      pullPolicy: IfNotPresent
+      tag: "latest"
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    env:
+      - name: LOG_LEVEL
+        value: "INFO"
+      - name: ENVIRONMENT
+        value: "production"
+      - name: MAX_CONCURRENT_WORKFLOWS
+        value: "50"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                - repository_indexing
+            topologyKey: kubernetes.io/hostname
+
+logging:
+  level: "INFO"
+  format: "json"
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+
+nodeSelector:
+  node-type: workload
+
+tolerations:
+- key: "workload"
+  operator: "Equal"
+  value: "true"
+  effect: "NoSchedule"

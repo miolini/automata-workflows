@@ -174,6 +174,84 @@ podman-compose up -d workers
 temporal workflow list --namespace default
 ```
 
+### Querying Workflows
+
+Query and manage workflow executions from the command line or via REST API:
+
+#### Command Line Query Tool
+```bash
+# List all recent workflows (last 24 hours)
+uv run python scripts/query_workflows.py list
+
+# List workflows by type
+uv run python scripts/query_workflows.py list-type --workflow-type LLMInferenceWorkflow
+
+# List only running workflows
+uv run python scripts/query_workflows.py running
+
+# List completed workflows
+uv run python scripts/query_workflows.py completed --hours 48
+
+# List failed workflows
+uv run python scripts/query_workflows.py failed
+
+# Get detailed status of a specific workflow
+uv run python scripts/query_workflows.py status --workflow-id my-workflow-123
+
+# Get workflow result (if completed)
+uv run python scripts/query_workflows.py result --workflow-id my-workflow-123
+
+# Cancel a running workflow
+uv run python scripts/query_workflows.py cancel --workflow-id my-workflow-123
+```
+
+#### REST API Server
+
+Start the API server to expose workflow querying via HTTP:
+
+```bash
+# Install optional dependencies first
+uv pip install fastapi uvicorn
+
+# Start the API server
+uv run python scripts/api_server.py
+```
+
+API endpoints:
+- `GET /api/workflows/list` - List all workflows
+- `GET /api/workflows/recent?hours=24` - List recent workflows
+- `GET /api/workflows/running` - List running workflows
+- `GET /api/workflows/completed` - List completed workflows
+- `GET /api/workflows/failed` - List failed workflows
+- `GET /api/workflows/{workflow_id}/status` - Get workflow status
+- `GET /api/workflows/{workflow_id}/result` - Get workflow result
+- `POST /api/workflows/{workflow_id}/cancel` - Cancel workflow
+- `POST /api/workflows/{workflow_id}/terminate` - Terminate workflow
+
+API documentation: http://localhost:8000/docs
+
+#### Loading Workflows on Page Reload
+
+For web applications, use the API to load existing workflows when the page reloads:
+
+```javascript
+// Load recent workflows on page mount
+async function loadWorkflows() {
+  const response = await fetch('/api/workflows/recent?hours=24&workflow_type=LLMInferenceWorkflow');
+  const data = await response.json();
+  
+  // Update UI with workflows
+  setWorkflows(data.workflows);
+  
+  // Poll running workflows
+  data.workflows
+    .filter(w => w.status === 'RUNNING')
+    .forEach(w => pollWorkflowStatus(w.workflow_id));
+}
+```
+
+See `docs/elixir_integration.md` for complete Elixir/Phoenix and React examples.
+
 ### Development Commands
 
 ```bash
@@ -294,10 +372,53 @@ podman-compose up -d
 uv run python scripts/dev_server.py
 ```
 
+### Kubernetes Deployment
+
+The project includes comprehensive Helm charts for deploying to Kubernetes:
+
+```bash
+cd k8s
+
+# Deploy to development environment
+./scripts/deploy.sh dev all
+
+# Set up port forwarding to access services
+./scripts/port-forward.sh dev all
+
+# Access Temporal Web UI at http://localhost:8088
+```
+
+#### Architecture
+- **Temporal Service**: Workflow orchestration with PostgreSQL
+- **Automata Workers**: Individual deployments per worker type
+- **Monitoring**: Prometheus metrics and health checks
+- **Security**: Non-root containers, network policies, secrets management
+
+#### Environment Configuration
+- **Development**: Single replicas, minimal resources, debug logging
+- **Production**: Multiple replicas, resource limits, structured logging
+
+#### Management Commands
+```bash
+# Deploy components
+./scripts/deploy.sh <env> <component>  # env: dev/staging/prod, component: temporal/workers/all
+
+# Destroy deployments
+./scripts/destroy.sh <env> <component>
+
+# Port forwarding
+./scripts/port-forward.sh <env> <service>
+
+# Check status
+kubectl get pods -n automata-dev
+```
+
+For detailed instructions, see [k8s/docs/kubernetes-deployment.md](k8s/docs/kubernetes-deployment.md).
+
 ### Staging Environment
 ```bash
-# Deploy to staging
-kubectl apply -f k8s/staging/
+# Deploy to staging using Helm charts
+./scripts/deploy.sh staging all
 
 # Run smoke tests
 uv run python scripts/smoke_tests.py --env staging
@@ -305,8 +426,8 @@ uv run python scripts/smoke_tests.py --env staging
 
 ### Production Deployment
 ```bash
-# Deploy to production
-kubectl apply -f k8s/production/
+# Deploy to production using Helm charts
+./scripts/deploy.sh prod all
 
 # Verify deployment
 uv run python scripts/health_check.py --env production

@@ -1,3 +1,5 @@
+# Docker Compose file for infrastructure only
+# Use this to run just the infrastructure services (Temporal, DB, Monitoring)
 version: '3.8'
 
 services:
@@ -84,65 +86,6 @@ services:
       - COLLECTOR_OTLP_ENABLED=true
     networks:
       - automata-network
-
-  # LLM Inference Worker
-  llm-inference-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: python -m workers.llm_inference_worker
-    environment:
-      - TEMPORAL_HOST=temporal:7233
-      - TEMPORAL_NAMESPACE=default
-      - TEMPORAL_TASK_QUEUE=llm-inference
-      - LOG_LEVEL=INFO
-      - LOG_FORMAT=json
-      # OpenRouter API configuration (set in .env or environment)
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-      # Elixir webhook configuration
-      - ELIXIR_WEBHOOK_URL=${ELIXIR_WEBHOOK_URL:-http://host.docker.internal:4000/api/webhooks/workflows}
-      - ELIXIR_WEBHOOK_SECRET=${ELIXIR_WEBHOOK_SECRET:-dev-webhook-secret-12345}
-    depends_on:
-      - temporal
-      - postgres
-    networks:
-      - automata-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import asyncio; from temporalio.client import Client; asyncio.run(Client.connect('temporal:7233'))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Repository Indexing Worker
-  repository-indexing-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: python -m workers.repository_indexing_worker
-    environment:
-      - TEMPORAL_HOST=temporal:7233
-      - TEMPORAL_NAMESPACE=default
-      - TEMPORAL_TASK_QUEUE=repository-indexing-task-queue
-      - LOG_LEVEL=INFO
-      - LOG_FORMAT=json
-      # GitHub configuration (set in .env or environment)
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-      - GITHUB_API_URL=${GITHUB_API_URL:-https://api.github.com}
-    depends_on:
-      - temporal
-      - postgres
-    networks:
-      - automata-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import asyncio; from temporalio.client import Client; asyncio.run(Client.connect('temporal:7233'))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 volumes:
   postgres_data:

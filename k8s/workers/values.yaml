@@ -1,0 +1,92 @@
+# Default values for automata-workers.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Temporal connection configuration
+temporal:
+  host: "temporal-frontend"
+  port: 7233
+  namespace: "default"
+
+# Worker configurations
+workers:
+  llm_inference:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: automata-workflows
+      pullPolicy: IfNotPresent
+      tag: "latest"
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    env: []
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    
+  repository_indexing:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: automata-workflows
+      pullPolicy: IfNotPresent
+      tag: "latest"
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    env: []
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# Common configuration
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Monitoring configuration
+prometheus:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "json"

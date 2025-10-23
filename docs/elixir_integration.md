@@ -49,6 +49,14 @@ defmodule YourApp.TemporalClient do
     GenServer.call(__MODULE__, {:get_workflow_status, workflow_id, opts})
   end
 
+  def list_workflows(opts \\ []) do
+    GenServer.call(__MODULE__, {:list_workflows, opts})
+  end
+
+  def list_recent_workflows(opts \\ []) do
+    GenServer.call(__MODULE__, {:list_recent_workflows, opts})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -82,6 +90,34 @@ defmodule YourApp.TemporalClient do
     case get_workflow_execution(state.host, state.namespace, workflow_id) do
       {:ok, status} ->
         {:reply, {:ok, status}, state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:list_workflows, opts}, _from, state) do
+    max_results = Keyword.get(opts, :max_results, 100)
+    workflow_type = Keyword.get(opts, :workflow_type)
+    status = Keyword.get(opts, :status)
+    
+    case list_workflow_executions(state.host, state.namespace, workflow_type, status, max_results) do
+      {:ok, workflows} ->
+        {:reply, {:ok, workflows}, state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:list_recent_workflows, opts}, _from, state) do
+    hours = Keyword.get(opts, :hours, 24)
+    workflow_type = Keyword.get(opts, :workflow_type)
+    max_results = Keyword.get(opts, :max_results, 100)
+    
+    case list_recent_workflow_executions(state.host, state.namespace, workflow_type, hours, max_results) do
+      {:ok, workflows} ->
+        {:reply, {:ok, workflows}, state}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -124,6 +160,54 @@ defmodule YourApp.TemporalClient do
         {:error, %{status: status, body: body}}
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  defp list_workflow_executions(host, namespace, workflow_type, status, max_results) do
+    query_params = build_workflow_query_params(workflow_type, status, max_results)
+    url = "http://#{host}/api/namespaces/#{namespace}/workflows/list?#{URI.encode_query(query_params)}"
+    
+    case Tesla.get(url) do
+      {:ok, %Tesla.Env{status: 200, body: response_body}} ->
+        {:ok, Jason.decode!(response_body)}
+      {:ok, %Tesla.Env{status: status, body: body}} ->
+        {:error, %{status: status, body: body}}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp list_recent_workflow_executions(host, namespace, workflow_type, hours, max_results) do
+    start_time = DateTime.utc_now() |> DateTime.add(-hours * 3600, :second) |> DateTime.to_iso8601()
+    query_params = build_workflow_query_params(workflow_type, nil, max_results)
+    query_params = Map.put(query_params, :start_time, start_time)
+    
+    url = "http://#{host}/api/namespaces/#{namespace}/workflows/list?#{URI.encode_query(query_params)}"
+    
+    case Tesla.get(url) do
+      {:ok, %Tesla.Env{status: 200, body: response_body}} ->
+        {:ok, Jason.decode!(response_body)}
+      {:ok, %Tesla.Env{status: status, body: body}} ->
+        {:error, %{status: status, body: body}}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp build_workflow_query_params(workflow_type, status, max_results) do
+    params = %{max_results: max_results}
+    
+    params =
+      if workflow_type do
+        Map.put(params, :workflow_type, workflow_type)
+      else
+        params
+      end
+    
+    if status do
+      Map.put(params, :status, status)
+    else
+      params
     end
   end
 end
@@ -177,6 +261,42 @@ defmodule YourApp.Automata do
   """
   def workflow_status(workflow_id) do
     TemporalClient.get_workflow_status(workflow_id)
+  end
+
+  @doc """
+  List all workflows with optional filtering.
+  """
+  def list_workflows(opts \\ []) do
+    TemporalClient.list_workflows(opts)
+  end
+
+  @doc """
+  List recent workflows (last N hours).
+  """
+  def list_recent_workflows(opts \\ []) do
+    hours = Keyword.get(opts, :hours, 24)
+    workflow_type = Keyword.get(opts, :workflow_type)
+    max_results = Keyword.get(opts, :max_results, 100)
+    
+    TemporalClient.list_recent_workflows(
+      hours: hours,
+      workflow_type: workflow_type,
+      max_results: max_results
+    )
+  end
+
+  @doc """
+  List running workflows.
+  """
+  def list_running_workflows(opts \\ []) do
+    workflow_type = Keyword.get(opts, :workflow_type)
+    max_results = Keyword.get(opts, :max_results, 100)
+    
+    TemporalClient.list_workflows(
+      workflow_type: workflow_type,
+      status: "RUNNING",
+      max_results: max_results
+    )
   end
 end
 ```
@@ -263,6 +383,80 @@ defmodule YourAppWeb.Api.AutomataController do
     end
   end
 
+  @doc """
+  GET /api/automata/workflows/list
+  List recent workflow executions (for page reload)
+  """
+  def list_workflows(conn, params) do
+    opts = [
+      workflow_type: Map.get(params, "workflow_type"),
+      status: Map.get(params, "status"),
+      max_results: Map.get(params, "max_results", 100) |> String.to_integer()
+    ]
+    |> Enum.filter(fn {_k, v} -> v != nil end)
+    
+    case Automata.list_workflows(opts) do
+      {:ok, workflows} ->
+        conn
+        |> json(%{
+          workflows: workflows,
+          count: length(workflows)
+        })
+      
+      {:error, reason} ->
+        handle_error(conn, reason)
+    end
+  end
+
+  @doc """
+  GET /api/automata/workflows/recent
+  List recent workflows (last N hours)
+  """
+  def list_recent_workflows(conn, params) do
+    opts = [
+      hours: Map.get(params, "hours", "24") |> String.to_integer(),
+      workflow_type: Map.get(params, "workflow_type"),
+      max_results: Map.get(params, "max_results", "100") |> String.to_integer()
+    ]
+    |> Enum.filter(fn {_k, v} -> v != nil end)
+    
+    case Automata.list_recent_workflows(opts) do
+      {:ok, workflows} ->
+        conn
+        |> json(%{
+          workflows: workflows,
+          count: length(workflows)
+        })
+      
+      {:error, reason} ->
+        handle_error(conn, reason)
+    end
+  end
+
+  @doc """
+  GET /api/automata/workflows/running
+  List currently running workflows
+  """
+  def list_running_workflows(conn, params) do
+    opts = [
+      workflow_type: Map.get(params, "workflow_type"),
+      max_results: Map.get(params, "max_results", "100") |> String.to_integer()
+    ]
+    |> Enum.filter(fn {_k, v} -> v != nil end)
+    
+    case Automata.list_running_workflows(opts) do
+      {:ok, workflows} ->
+        conn
+        |> json(%{
+          workflows: workflows,
+          count: length(workflows)
+        })
+      
+      {:error, reason} ->
+        handle_error(conn, reason)
+    end
+  end
+
   defp extract_execution_info(status) do
     %{
       workflow_type: status["workflowType"]["name"],
@@ -289,9 +483,15 @@ defmodule YourAppWeb.Router do
   scope "/api", YourAppWeb do
     pipe_through :api
 
+    # Start workflows
     post "/automata/llm_inference", Api.AutomataController, :llm_inference
     post "/automata/llm_inference/detailed", Api.AutomataController, :llm_inference_detailed
+    
+    # Query workflows
     get "/automata/workflow/:id/status", Api.AutomataController, :workflow_status
+    get "/automata/workflows/list", Api.AutomataController, :list_workflows
+    get "/automata/workflows/recent", Api.AutomataController, :list_recent_workflows
+    get "/automata/workflows/running", Api.AutomataController, :list_running_workflows
   end
 end
 ```
@@ -516,6 +716,303 @@ end
 3. **Circuit Breaking**: Implement circuit breaker pattern
 4. **Rate Limiting**: Add rate limiting for API endpoints
 5. **Monitoring**: Integrate with AppSignal/New Relic
+
+## Loading Workflows on Page Reload
+
+When a user reloads the page, you need to restore the list of existing workflow executions from Temporal's database. Here's how to implement this:
+
+### Phoenix LiveView Example
+
+```elixir
+defmodule YourAppWeb.WorkflowsLive do
+  use YourAppWeb, :live_view
+  alias YourApp.Automata
+
+  @impl true
+  def mount(_params, _session, socket) do
+    # Load recent workflows on page load
+    workflows = load_recent_workflows()
+    
+    {:ok, 
+     socket
+     |> assign(:workflows, workflows)
+     |> assign(:loading, false)}
+  end
+
+  @impl true
+  def handle_event("start_workflow", %{"prompt" => prompt}, socket) do
+    case Automata.run_llm_inference_simple(prompt) do
+      {:ok, result} ->
+        workflow_id = result["runId"]
+        
+        # Add to local state immediately
+        new_workflow = %{
+          workflow_id: workflow_id,
+          status: "RUNNING",
+          prompt: prompt,
+          start_time: DateTime.utc_now()
+        }
+        
+        workflows = [new_workflow | socket.assigns.workflows]
+        
+        # Start polling for result
+        schedule_status_check(workflow_id)
+        
+        {:noreply, assign(socket, :workflows, workflows)}
+      
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed: #{inspect(reason)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("refresh_workflows", _params, socket) do
+    workflows = load_recent_workflows()
+    {:noreply, assign(socket, :workflows, workflows)}
+  end
+
+  @impl true
+  def handle_info({:check_status, workflow_id}, socket) do
+    case Automata.workflow_status(workflow_id) do
+      {:ok, status} ->
+        workflows = update_workflow_status(socket.assigns.workflows, workflow_id, status)
+        
+        # Continue polling if still running
+        if status["status"]["value"] == "RUNNING" do
+          schedule_status_check(workflow_id)
+        end
+        
+        {:noreply, assign(socket, :workflows, workflows)}
+      
+      {:error, _reason} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp load_recent_workflows do
+    case Automata.list_recent_workflows(hours: 24, workflow_type: "LLMInferenceWorkflow") do
+      {:ok, workflows} ->
+        Enum.map(workflows, fn w ->
+          %{
+            workflow_id: w["workflow_id"],
+            workflow_type: w["workflow_type"],
+            status: w["status"],
+            start_time: w["start_time"],
+            close_time: w["close_time"]
+          }
+        end)
+      
+      {:error, _reason} ->
+        []
+    end
+  end
+
+  defp update_workflow_status(workflows, workflow_id, status) do
+    Enum.map(workflows, fn w ->
+      if w.workflow_id == workflow_id do
+        %{w | status: status["status"]["value"]}
+      else
+        w
+      end
+    end)
+  end
+
+  defp schedule_status_check(workflow_id) do
+    Process.send_after(self(), {:check_status, workflow_id}, 2000)
+  end
+end
+```
+
+### React/JavaScript Example
+
+```javascript
+// WorkflowList.jsx
+import { useEffect, useState } from 'react';
+
+function WorkflowList() {
+  const [workflows, setWorkflows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load workflows on page mount
+  useEffect(() => {
+    loadRecentWorkflows();
+  }, []);
+
+  async function loadRecentWorkflows() {
+    try {
+      const response = await fetch('/api/automata/workflows/recent?hours=24&workflow_type=LLMInferenceWorkflow');
+      const data = await response.json();
+      setWorkflows(data.workflows);
+      setLoading(false);
+      
+      // Start polling for running workflows
+      data.workflows
+        .filter(w => w.status === 'RUNNING')
+        .forEach(w => pollWorkflowStatus(w.workflow_id));
+    } catch (error) {
+      console.error('Failed to load workflows:', error);
+      setLoading(false);
+    }
+  }
+
+  async function pollWorkflowStatus(workflowId) {
+    try {
+      const response = await fetch(`/api/automata/workflow/${workflowId}/status`);
+      const data = await response.json();
+      
+      // Update workflow in list
+      setWorkflows(prev => 
+        prev.map(w => 
+          w.workflow_id === workflowId 
+            ? { ...w, status: data.status }
+            : w
+        )
+      );
+      
+      // Continue polling if still running
+      if (data.execution_info.status === 'RUNNING') {
+        setTimeout(() => pollWorkflowStatus(workflowId), 2000);
+      }
+    } catch (error) {
+      console.error('Failed to poll workflow:', error);
+    }
+  }
+
+  async function startNewWorkflow(prompt) {
+    const response = await fetch('/api/automata/llm_inference', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    
+    const data = await response.json();
+    
+    // Add to local state
+    const newWorkflow = {
+      workflow_id: data.workflow_id,
+      status: 'RUNNING',
+      start_time: new Date().toISOString()
+    };
+    
+    setWorkflows(prev => [newWorkflow, ...prev]);
+    
+    // Start polling
+    pollWorkflowStatus(data.workflow_id);
+  }
+
+  if (loading) {
+    return <div>Loading workflows...</div>;
+  }
+
+  return (
+    <div>
+      <button onClick={() => startNewWorkflow("Hello, AI!")}>
+        Start New Workflow
+      </button>
+      
+      <button onClick={loadRecentWorkflows}>
+        Refresh
+      </button>
+      
+      <ul>
+        {workflows.map(w => (
+          <li key={w.workflow_id}>
+            {w.workflow_id} - {w.status}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### Python API Server Example
+
+If you need a REST API server to expose workflow listing:
+
+```python
+# scripts/api_server.py
+from fastapi import FastAPI, Query
+from typing import Optional
+import uvicorn
+
+from shared.services.workflow_query import create_workflow_query_service
+
+app = FastAPI(title="Automata Workflows API")
+
+@app.get("/api/workflows/list")
+async def list_workflows(
+    workflow_type: Optional[str] = None,
+    status: Optional[str] = None,
+    max_results: int = Query(100, le=1000)
+):
+    """List workflow executions."""
+    service = await create_workflow_query_service()
+    workflows = await service.list_workflows(
+        workflow_type=workflow_type,
+        max_results=max_results
+    )
+    return {"workflows": workflows, "count": len(workflows)}
+
+@app.get("/api/workflows/recent")
+async def list_recent_workflows(
+    hours: int = Query(24, le=168),
+    workflow_type: Optional[str] = None,
+    max_results: int = Query(100, le=1000)
+):
+    """List recent workflows (last N hours)."""
+    service = await create_workflow_query_service()
+    workflows = await service.list_recent_workflows(
+        workflow_type=workflow_type,
+        hours=hours,
+        max_results=max_results
+    )
+    return {"workflows": workflows, "count": len(workflows)}
+
+@app.get("/api/workflows/running")
+async def list_running_workflows(
+    workflow_type: Optional[str] = None,
+    max_results: int = Query(100, le=1000)
+):
+    """List currently running workflows."""
+    service = await create_workflow_query_service()
+    workflows = await service.list_running_workflows(
+        workflow_type=workflow_type,
+        max_results=max_results
+    )
+    return {"workflows": workflows, "count": len(workflows)}
+
+@app.get("/api/workflows/{workflow_id}/status")
+async def get_workflow_status(workflow_id: str):
+    """Get detailed workflow status."""
+    service = await create_workflow_query_service()
+    status = await service.get_workflow_status(workflow_id)
+    return status
+
+@app.get("/api/workflows/{workflow_id}/result")
+async def get_workflow_result(workflow_id: str):
+    """Get workflow result (if completed)."""
+    service = await create_workflow_query_service()
+    try:
+        result = await service.get_workflow_result(workflow_id)
+        return {"status": "completed", "result": result}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+### Key Points for Page Reload
+
+1. **On Page Load**: Call `list_recent_workflows()` to load existing executions from Temporal database
+2. **Filter by Type**: Use `workflow_type` parameter to only load relevant workflows
+3. **Time Range**: Use `hours` parameter to limit how far back to search (e.g., last 24 hours)
+4. **Poll Running Workflows**: After loading, check status of any `RUNNING` workflows and poll for updates
+5. **Update UI**: When status changes from RUNNING to COMPLETED/FAILED, update the UI accordingly
+6. **Persist Locally**: Consider caching in browser localStorage to reduce API calls
+
+This ensures users see their workflow history even after page reload, providing a seamless experience.
 
 ## Recommendation
 

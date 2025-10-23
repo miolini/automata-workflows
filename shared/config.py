@@ -29,7 +29,7 @@ class Config:
     # Temporal Configuration
     TEMPORAL_HOST: str = os.getenv("TEMPORAL_HOST", "localhost:7233")
     TEMPORAL_NAMESPACE: str = os.getenv("TEMPORAL_NAMESPACE", "default")
-    TEMPORAL_TASK_QUEUE: str = os.getenv("TEMPORAL_TASK_QUEUE", "automata-workflows")
+    TEMPORAL_TASK_QUEUE: str = os.getenv("TEMPORAL_TASK_QUEUE", "llm-inference")
 
     # OpenRouter Configuration
     OPENROUTER_API_KEY: str | None = os.getenv("OPENROUTER_API_KEY")

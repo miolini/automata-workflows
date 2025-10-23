@@ -14,6 +14,7 @@ from shared.activities.llm import (
     estimate_tokens,
     format_function_result,
     get_available_models,
+    notify_completion,
     validate_model,
 )
 from shared.config import config
@@ -29,8 +30,8 @@ async def run_llm_inference_worker(task_queue: str | None = None):
         temporal_config["host"], namespace=temporal_config["namespace"]
     )
 
-    # Use provided task queue or default from config
-    queue = task_queue or config.TEMPORAL_TASK_QUEUE
+    # Use provided task queue or default to llm-inference
+    queue = task_queue or "llm-inference"
 
     # Create worker with workflows and activities
     worker = Worker(
@@ -45,6 +46,7 @@ async def run_llm_inference_worker(task_queue: str | None = None):
             get_available_models,
             estimate_tokens,
             format_function_result,
+            notify_completion,
         ],
         max_concurrent_activities=10,  # Allow concurrent LLM requests
     )
@@ -61,6 +63,7 @@ async def run_llm_inference_worker(task_queue: str | None = None):
     print("  - get_available_models")
     print("  - estimate_tokens")
     print("  - format_function_result")
+    print("  - notify_completion")
     print()
     print("Press Ctrl+C to stop the worker")
 

@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "temporal.fullname" . }}-frontend
+  labels:
+    {{- include "temporal.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.temporal.frontend.port }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+    - port: 7243
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "temporal.selectorLabels" . | nindent 4 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "temporal.fullname" . }}-web-ui
+  labels:
+    {{- include "temporal.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.temporal.web_ui.port }}
+      targetPort: web-ui
+      protocol: TCP
+      name: web-ui
+  selector:
+    {{- include "temporal.selectorLabels" . | nindent 4 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "temporal.fullname" . }}-history
+  labels:
+    {{- include "temporal.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.temporal.history.port }}
+      targetPort: {{ .Values.temporal.history.port }}
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "temporal.selectorLabels" . | nindent 4 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "temporal.fullname" . }}-matching
+  labels:
+    {{- include "temporal.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.temporal.matching.port }}
+      targetPort: {{ .Values.temporal.matching.port }}
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "temporal.selectorLabels" . | nindent 4 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "temporal.fullname" . }}-worker
+  labels:
+    {{- include "temporal.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.temporal.worker.port }}
+      targetPort: {{ .Values.temporal.worker.port }}
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "temporal.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,66 @@
+# Production environment values for Temporal
+
+replicaCount: 3
+
+image:
+  repository: temporalio/auto-setup
+  pullPolicy: IfNotPresent
+  tag: "1.21.0"
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 1000m
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+postgresql:
+  enabled: true
+  auth:
+    existingSecret: "temporal-postgres-secret"
+  primary:
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClass: "ssd"
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - postgresql
+            topologyKey: kubernetes.io/hostname
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+
+nodeSelector:
+  node-type: workload
+
+tolerations:
+- key: "workload"
+  operator: "Equal"
+  value: "true"
+  effect: "NoSchedule"

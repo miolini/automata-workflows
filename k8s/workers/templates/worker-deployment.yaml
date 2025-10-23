@@ -1,0 +1,87 @@
+{{- range $workerName, $workerConfig := .Values.workers }}
+{{- if $workerConfig.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "automata-workers.fullname" $ }}-{{ $workerName }}
+  labels:
+    {{- include "automata-workers.workerLabels" (dict "context" $ "workerName" $workerName) | nindent 4 }}
+spec:
+  replicas: {{ $workerConfig.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "automata-workers.workerSelectorLabels" (dict "context" $ "workerName" $workerName) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with $.Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "automata-workers.workerSelectorLabels" (dict "context" $ "workerName" $workerName) | nindent 8 }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "automata-workers.serviceAccountName" $ }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $workerName }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          image: "{{ $workerConfig.image.repository }}:{{ $workerConfig.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $workerConfig.image.pullPolicy }}
+          command:
+            - python
+            - -m
+            - workers.{{ $workerName }}_worker
+          env:
+            - name: TEMPORAL_HOST
+              value: {{ $.Values.temporal.host }}
+            - name: TEMPORAL_PORT
+              value: {{ $.Values.temporal.port | quote }}
+            - name: TEMPORAL_NAMESPACE
+              value: {{ $.Values.temporal.namespace }}
+            - name: LOG_LEVEL
+              value: {{ $.Values.logging.level }}
+            - name: LOG_FORMAT
+              value: {{ $.Values.logging.format }}
+            {{- range $workerConfig.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml $workerConfig.resources | nindent 12 }}
+      {{- with $workerConfig.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $workerConfig.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $workerConfig.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

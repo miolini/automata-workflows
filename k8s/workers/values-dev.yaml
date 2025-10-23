@@ -1,0 +1,57 @@
+# Development environment values for Automata workers
+
+temporal:
+  host: "temporal-frontend"
+  port: 7233
+  namespace: "default"
+
+workers:
+  llm_inference:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: automata-workflows
+      pullPolicy: IfNotPresent
+      tag: "dev"
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    env:
+      - name: LOG_LEVEL
+        value: "DEBUG"
+      - name: ENVIRONMENT
+        value: "development"
+        
+  repository_indexing:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: automata-workflows
+      pullPolicy: IfNotPresent
+      tag: "dev"
+    resources:
+      limits:
+        cpu: 250m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    env:
+      - name: LOG_LEVEL
+        value: "DEBUG"
+      - name: ENVIRONMENT
+        value: "development"
+
+logging:
+  level: "DEBUG"
+  format: "console"
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s

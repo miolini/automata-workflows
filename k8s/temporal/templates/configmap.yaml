@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "temporal.fullname" . }}-config
+  labels:
+    {{- include "temporal.labels" . | nindent 4 }}
+data:
+  temporal.yaml: |
+    global:
+      membership:
+        max_join_duration: 30s
+        broadcast_address: ""
+      pprof:
+        port: 7936
+      metrics:
+        prometheus:
+          timer_type: histogram
+          listen_address: "0.0.0.0:9090"
+          enable_runtime_stats: true
+          service_name: temporal
+          enable_host_tag: true
+          enable_go_runtime_metrics: true
+          enable_build_info_metrics: true
+          per_unit_histogram_boundaries:
+            duration: ["0.001", "0.01", "0.1", "1", "10"]
+            payload: ["1024", "2048", "4096", "8192", "16384", "32768", "65536"]
+
+    namespaces:
+      - name: default
+        description: Default namespace for temporal workflows
+        retention: 7d
+
+    persistence:
+      default_store: default
+      visibility_store: visibility
+      num_history_shards: 4
+      datastores:
+        default:
+          sql:
+            driver: postgres
+            host: {{ include "temporal.postgresql.host" . }}
+            port: {{ include "temporal.postgresql.port" . }}
+            database: {{ include "temporal.postgresql.database" . }}
+            user: {{ include "temporal.postgresql.username" . }}
+            password: {{ include "temporal.postgresql.password" . }}
+            max_conns: 20
+            max_conn_lifetime: "1h"
+        visibility:
+          sql:
+            driver: postgres
+            host: {{ include "temporal.postgresql.host" . }}
+            port: {{ include "temporal.postgresql.port" . }}
+            database: {{ include "temporal.postgresql.database" . }}
+            user: {{ include "temporal.postgresql.username" . }}
+            password: {{ include "temporal.postgresql.password" . }}
+            max_conns: 20
+            max_conn_lifetime: "1h"
+
+    server:
+      enable_tls: false
+      
+    frontend:
+      service:
+        history:
+          address: {{ include "temporal.fullname" . }}-history:7234
+        matching:
+          address: {{ include "temporal.fullname" . }}-matching:7235
+        replication:
+          address: {{ include "temporal.fullname" . }}-replication:7237
+      grpc_port: {{ .Values.temporal.frontend.port }}
+      membership_port: 6933
+      http_port: 7243
+      metrics_port: 9090
+      history_grpc_port: 7234
+      history_membership_port: 6934
+      matching_grpc_port: 7235
+      matching_membership_port: 6935
+      worker_grpc_port: 7236
+      worker_membership_port: 6936
+      replication_grpc_port: 7237
+      replication_membership_port: 6937
+      
+    history:
+      service:
+        frontend:
+          address: {{ include "temporal.fullname" . }}-frontend:{{ .Values.temporal.frontend.port }}
+      grpc_port: {{ .Values.temporal.history.port }}
+      membership_port: 6934
+      metrics_port: 9091
+      num_history_shards: 4
+      
+    matching:
+      service:
+        frontend:
+          address: {{ include "temporal.fullname" . }}-frontend:{{ .Values.temporal.frontend.port }}
+      grpc_port: {{ .Values.temporal.matching.port }}
+      membership_port: 6935
+      metrics_port: 9092
+      range_size: 2000
+      
+    worker:
+      service:
+        frontend:
+          address: {{ include "temporal.fullname" . }}-frontend:{{ .Values.temporal.frontend.port }}
+      grpc_port: {{ .Values.temporal.worker.port }}
+      membership_port: 6936
+      metrics_port: 9093
+      
+    admin:
+      service:
+        frontend:
+          address: {{ include "temporal.fullname" . }}-frontend:{{ .Values.temporal.frontend.port }}
+      grpc_port: 7239
+      membership_port: 6939
+      metrics_port: 9094
+      
+    web_ui:
+      service:
+        frontend:
+          address: {{ include "temporal.fullname" . }}-frontend:{{ .Values.temporal.frontend.port }}
+      port: {{ .Values.temporal.web_ui.port }}
+      metrics_port: 9095

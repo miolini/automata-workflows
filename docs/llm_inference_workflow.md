@@ -62,7 +62,7 @@ result = await client.execute_workflow(
     "SimpleLLMInferenceWorkflow",
     request_data,
     id="chat-example",
-    task_queue="llm-inference-task-queue"
+    task_queue="llm-inference"
 )
 
 if result["status"] == "completed":
@@ -95,7 +95,7 @@ result = await client.execute_workflow(
     "SimpleBatchLLMWorkflow",
     batch_data,
     id="batch-example",
-    task_queue="llm-inference-task-queue"
+    task_queue="llm-inference"
 )
 
 print(f"Successful: {result['successful_requests']}")
@@ -194,7 +194,7 @@ export OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
 The worker can be configured with:
 
 - `max_concurrent_activities`: Maximum concurrent LLM requests
-- Task queue name: `llm-inference-task-queue`
+- Task queue name: `llm-inference`
 - Custom timeouts and retry policies
 
 ## Monitoring
@@ -274,7 +274,7 @@ llm_result = await workflow.execute_child_workflow(
     "SimpleLLMInferenceWorkflow",
     request_data,
     id="nested-llm-call",
-    task_queue="llm-inference-task-queue"
+    task_queue="llm-inference"
 )
 ```
 
@@ -297,6 +297,92 @@ functions = [
     }
 ]
 ```
+
+## Elixir API Integration
+
+The LLM Inference Workflow automatically notifies your Elixir backend when workflows complete via webhook callback.
+
+### Configuration
+
+Set these environment variables:
+
+```bash
+# Webhook endpoint URL
+ELIXIR_WEBHOOK_URL=http://localhost:4000/api/webhooks/workflows
+
+# Webhook authentication secret
+ELIXIR_WEBHOOK_SECRET=dev-webhook-secret-12345
+```
+
+### Webhook Payload
+
+The workflow sends a POST request to `{ELIXIR_WEBHOOK_URL}/{workflow_id}`:
+
+```json
+{
+  "status": "completed",
+  "result": {
+    "request": { /* original request */ },
+    "response": { /* LLM response */ },
+    "status": "completed",
+    "execution_time_ms": 1234,
+    "tokens_used": 567,
+    "finish_reason": "stop"
+  }
+}
+```
+
+Headers:
+```
+Authorization: Bearer {ELIXIR_WEBHOOK_SECRET}
+Content-Type: application/json
+```
+
+### Elixir Phoenix Endpoint Example
+
+```elixir
+defmodule MyAppWeb.WorkflowWebhookController do
+  use MyAppWeb, :controller
+
+  def handle_completion(conn, %{"workflow_id" => workflow_id} = params) do
+    # Verify webhook secret
+    with {:ok, _} <- verify_webhook_auth(conn),
+         {:ok, result} <- Map.fetch(params, "result"),
+         :ok <- process_workflow_result(workflow_id, result) do
+      json(conn, %{success: true})
+    else
+      error ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: inspect(error)})
+    end
+  end
+
+  defp verify_webhook_auth(conn) do
+    expected_secret = Application.get_env(:my_app, :webhook_secret)
+    
+    case get_req_header(conn, "authorization") do
+      ["Bearer " <> ^expected_secret] -> {:ok, :verified}
+      _ -> {:error, :unauthorized}
+    end
+  end
+
+  defp process_workflow_result(workflow_id, result) do
+    # Store result, update database, trigger next steps, etc.
+    Logger.info("Workflow #{workflow_id} completed: #{inspect(result)}")
+    :ok
+  end
+end
+```
+
+### Error Handling
+
+The webhook notification is non-fatal. If it fails:
+- The workflow will still complete successfully
+- Retries are attempted (3 attempts with exponential backoff)
+- Errors are logged but don't affect the workflow result
+
+This ensures LLM inference reliability even if the Elixir backend is temporarily unavailable.
 
 ## Contributing
 

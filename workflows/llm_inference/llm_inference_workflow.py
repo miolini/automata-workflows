@@ -136,7 +136,7 @@ class LLMInferenceWorkflow:
             
             # Convert dict to LLMInferenceResult if needed
             if isinstance(inference_result, dict):
-                return LLMInferenceResult(
+                result = LLMInferenceResult(
                     request=request,
                     response=inference_result.get("response"),
                     status=status,
@@ -145,8 +145,33 @@ class LLMInferenceWorkflow:
                     tokens_used=tokens_used,
                     finish_reason=inference_result.get("finish_reason")
                 )
+            else:
+                result = inference_result
             
-            return inference_result
+            # Step 5: Notify Elixir API about completion
+            try:
+                workflow.logger.info("Step 5: Notifying Elixir API about completion")
+                notification_result = await workflow.execute_activity(
+                    "notify_completion",
+                    args=[workflow.info().workflow_id, result.model_dump()],
+                    start_to_close_timeout=timedelta(seconds=30),
+                    retry_policy=RetryPolicy(
+                        initial_interval=timedelta(seconds=1),
+                        maximum_interval=timedelta(seconds=10),
+                        backoff_coefficient=2.0,
+                        maximum_attempts=3,
+                    ),
+                )
+                
+                if notification_result.get("success"):
+                    workflow.logger.info("Successfully notified Elixir API")
+                else:
+                    workflow.logger.warning(f"Failed to notify Elixir API: {notification_result.get('error')}")
+            except Exception as notify_error:
+                # Don't fail the workflow if notification fails
+                workflow.logger.warning(f"Notification to Elixir API failed (non-fatal): {notify_error}")
+            
+            return result
 
         except Exception as e:
             workflow.logger.error(f"LLM inference workflow failed: {e}")

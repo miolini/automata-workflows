@@ -1,0 +1,41 @@
+# Development environment values for Temporal
+
+replicaCount: 1
+
+image:
+  repository: temporalio/auto-setup
+  pullPolicy: IfNotPresent
+  tag: "1.21.0"
+
+resources:
+  limits:
+    cpu: 250m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "temporaldev"
+    username: "temporal"
+    password: "temporaldev"
+    database: "temporal"
+  primary:
+    persistence:
+      enabled: true
+      size: 4Gi
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s

@@ -3,6 +3,7 @@ LLM and OpenRouter integration activities for Automata Workflows
 """
 
 import json
+import os
 import time
 from typing import Any
 
@@ -440,3 +441,51 @@ async def format_function_result(function_name: str, result: Any) -> str:
     except Exception as e:
         logger.error(f"Failed to format function result: {e}")
         return f"Function '{function_name}' returned a result that could not be formatted: {str(result)}"
+
+
+@activity.defn
+async def notify_completion(workflow_id: str, result: dict[str, Any]) -> dict[str, Any]:
+    """
+    Notify Elixir API about workflow completion via webhook.
+
+    Args:
+        workflow_id: The Temporal workflow ID
+        result: The workflow result to send
+
+    Returns:
+        Response from the webhook endpoint
+    """
+    webhook_url = os.getenv("ELIXIR_WEBHOOK_URL", "http://localhost:4000/api/webhooks/workflows")
+    webhook_secret = os.getenv("ELIXIR_WEBHOOK_SECRET", "dev-webhook-secret-12345")
+    
+    try:
+        logger.info(f"Notifying Elixir API about workflow completion: {workflow_id}")
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{webhook_url}/{workflow_id}",
+                json={"status": "completed", "result": result},
+                headers={"Authorization": f"Bearer {webhook_secret}"}
+            )
+            response.raise_for_status()
+            
+            logger.info(f"Successfully notified Elixir API for workflow {workflow_id}")
+            return {
+                "success": True,
+                "status_code": response.status_code,
+                "response": response.json() if response.text else None
+            }
+            
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error notifying Elixir API: {e.response.status_code} - {e.response.text}")
+        return {
+            "success": False,
+            "error": f"HTTP {e.response.status_code}: {e.response.text}",
+            "status_code": e.response.status_code
+        }
+    except Exception as e:
+        logger.error(f"Failed to notify Elixir API: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }

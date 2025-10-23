@@ -1,0 +1,29 @@
+{{- range $workerName, $workerConfig := .Values.workers }}
+{{- if $workerConfig.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "automata-workers.fullname" $ }}-{{ $workerName }}
+  labels:
+    {{- include "automata-workers.workerLabels" (dict "context" $ "workerName" $workerName) | nindent 4 }}
+    {{- if $.Values.prometheus.enabled }}
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+    {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+    - port: 9090
+      targetPort: 9090
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "automata-workers.workerSelectorLabels" (dict "context" $ "workerName" $workerName) | nindent 4 }}
+{{- end }}
+{{- end }}

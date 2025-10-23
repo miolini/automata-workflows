@@ -1,0 +1,95 @@
+# Docker Compose file for workers only
+# Use this to run workers separately from the main infrastructure
+version: '3.8'
+
+services:
+  # LLM Inference Worker
+  llm-inference-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m workers.llm_inference_worker
+    environment:
+      - TEMPORAL_HOST=${TEMPORAL_HOST:-localhost:7233}
+      - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
+      - TEMPORAL_TASK_QUEUE=llm-inference
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      # OpenRouter API configuration
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+    networks:
+      - automata-network
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; from temporalio.client import Client; asyncio.run(Client.connect('${TEMPORAL_HOST:-localhost:7233}'))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Repository Indexing Worker
+  repository-indexing-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m workers.repository_indexing_worker
+    environment:
+      - TEMPORAL_HOST=${TEMPORAL_HOST:-localhost:7233}
+      - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
+      - TEMPORAL_TASK_QUEUE=${REPOSITORY_INDEXING_TASK_QUEUE:-repository-indexing-task-queue}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      # GitHub configuration
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_API_URL=${GITHUB_API_URL:-https://api.github.com}
+    networks:
+      - automata-network
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; from temporalio.client import Client; asyncio.run(Client.connect('${TEMPORAL_HOST:-localhost:7233}'))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # External Temporal service (when running workers separately)
+  temporal:
+    image: temporalio/auto-setup:latest
+    ports:
+      - "${TEMPORAL_PORT:-7233}:7233"
+      - "${TEMPORAL_UI_PORT:-8233}:8233"
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+    depends_on:
+      - postgres
+    networks:
+      - automata-network
+
+  postgres:
+    image: postgres:15
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=temporal
+      - POSTGRES_PASSWORD=temporal
+      - POSTGRES_DB=temporal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - automata-network
+
+volumes:
+  postgres_data:
+
+networks:
+  automata-network:
+    driver: bridge
