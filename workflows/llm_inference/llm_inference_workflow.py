@@ -49,7 +49,7 @@ class LLMInferenceWorkflow:
                     initial_interval=timedelta(seconds=1),
                     maximum_interval=timedelta(seconds=10),
                     backoff_coefficient=2.0,
-                    maximum_attempts=3,
+                    maximum_attempts=10,
                 ),
             )
 
@@ -93,12 +93,12 @@ class LLMInferenceWorkflow:
             inference_result: Any = await workflow.execute_activity(
                 "chat_completion",
                 args=[request],
-                start_to_close_timeout=timedelta(minutes=5),
+                start_to_close_timeout=timedelta(minutes=30),
                 retry_policy=RetryPolicy(
-                    initial_interval=timedelta(seconds=2),
+                    initial_interval=timedelta(seconds=1.2),
                     maximum_interval=timedelta(minutes=2),
                     backoff_coefficient=2.0,
-                    maximum_attempts=3
+                    maximum_attempts=10
                 )
             )
 
