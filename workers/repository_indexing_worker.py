@@ -5,9 +5,15 @@ This worker runs the repository indexing workflow that fetches and indexes repos
 """
 
 import asyncio
+from pathlib import Path
 
+from dotenv import load_dotenv
 from temporalio.client import Client
 from temporalio.worker import Worker
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 from shared.config import config
 from workflows.coding_automation.repository_indexing_workflow import (

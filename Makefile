@@ -7,18 +7,32 @@
 help:
 	@echo "Automata Workflows - Available Commands:"
 	@echo ""
-	@echo "  install       - Install dependencies with uv"
-	@echo "  dev           - Start development environment"
-	@echo "  test          - Run tests"
-	@echo "  lint          - Run linting and type checking"
-	@echo "  format        - Format code with black and isort"
-	@echo "  clean         - Clean up cache files"
-	@echo "  worker        - Start workflow workers"
-	@echo "  workflow      - Run individual workflow"
-	@echo "  docker-build  - Build Docker image"
-	@echo "  docker-up     - Start services with Docker Compose"
-	@echo "  docker-down   - Stop services with Docker Compose"
-	@echo "  docker-logs   - Show Docker logs"
+	@echo "Development:"
+	@echo "  install              - Install dependencies with uv"
+	@echo "  dev                  - Start development environment"
+	@echo "  test                 - Run tests"
+	@echo "  lint                 - Run linting and type checking"
+	@echo "  format               - Format code with black and isort"
+	@echo "  clean                - Clean up cache files"
+	@echo ""
+	@echo "Workers:"
+	@echo "  worker               - Start all workflow workers"
+	@echo "  worker-llm           - Start LLM inference worker"
+	@echo "  worker-coding-agent  - Start Coding Agent worker"
+	@echo "  worker-repository    - Start Repository Indexing worker"
+	@echo ""
+	@echo "Testing:"
+	@echo "  test-llm             - Quick test with LLM inference"
+	@echo "  test-coding-agent    - Test Coding Agent workflow"
+	@echo ""
+	@echo "Monitoring:"
+	@echo "  query-coding-agent   - Query and monitor Coding Agent workflows"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-build         - Build Docker image"
+	@echo "  docker-up            - Start services with Docker Compose"
+	@echo "  docker-down          - Stop services with Docker Compose"
+	@echo "  docker-logs          - Show Docker logs"
 	@echo ""
 
 # Install dependencies
@@ -75,6 +89,16 @@ worker-llm:
 	@echo "🤖 Starting LLM inference worker..."
 	uv run python scripts/run_workers.py --workflow llm_inference
 
+# Start coding agent worker
+worker-coding-agent:
+	@echo "🤖 Starting Coding Agent worker..."
+	uv run python workers/coding_agent_worker.py
+
+# Start repository indexing worker
+worker-repository:
+	@echo "🤖 Starting Repository Indexing worker..."
+	uv run python scripts/run_workers.py --workflow repository_indexing
+
 # Run workflow
 workflow:
 	@echo "🔄 Running workflow..."
@@ -91,6 +115,23 @@ workflow:
 test-llm:
 	@echo "🧪 Testing LLM inference..."
 	uv run python scripts/run_workflow.py --workflow llm_inference --input-file examples/llm_test_input.json
+
+# Test coding agent workflow
+test-coding-agent:
+	@echo "🧪 Testing Coding Agent workflow..."
+	uv run python examples/coding_agent_example.py
+
+# Query coding agent workflows
+query-coding-agent:
+	@echo "📊 Querying Coding Agent workflows..."
+	@echo "Available commands: status, list, monitor, cancel"
+	@read -p "Enter command: " cmd; \
+	read -p "Enter workflow ID (if needed): " wfid; \
+	if [ -n "$$wfid" ]; then \
+		uv run python scripts/query_coding_agent_workflows.py $$cmd $$wfid; \
+	else \
+		uv run python scripts/query_coding_agent_workflows.py $$cmd; \
+	fi
 
 # Database migration
 migrate:

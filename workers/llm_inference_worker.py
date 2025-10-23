@@ -5,9 +5,15 @@ This worker runs LLM inference workflows using OpenRouter API.
 """
 
 import asyncio
+from pathlib import Path
 
+from dotenv import load_dotenv
 from temporalio.client import Client
 from temporalio.worker import Worker
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 from shared.activities.llm import (
     chat_completion,

@@ -62,6 +62,24 @@ class Config:
         os.getenv("RETRY_BACKOFF_COEFFICIENT", "2.0")
     )
 
+    # NATS Configuration
+    NATS_URL: str = os.getenv("NATS_URL", "nats://localhost:4222")
+    NATS_HTTP_URL: str | None = os.getenv("NATS_HTTP_URL")
+    NATS_SUBJECT_PREFIX: str = os.getenv("NATS_SUBJECT_PREFIX", "automata.workflows")
+
+    # Elixir API Configuration
+    ELIXIR_WEBHOOK_URL: str = os.getenv(
+        "ELIXIR_WEBHOOK_URL", "http://localhost:4000/api/webhooks/workflows"
+    )
+    ELIXIR_WEBHOOK_SECRET: str = os.getenv(
+        "ELIXIR_WEBHOOK_SECRET", "dev-webhook-secret-12345"
+    )
+
+    # Coding Agent Configuration
+    TEMPORAL_TASK_QUEUE_CODING_AGENT: str = os.getenv(
+        "TEMPORAL_TASK_QUEUE_CODING_AGENT", "coding-agent"
+    )
+
     @classmethod
     def validate_openrouter_config(cls) -> bool:
         """Validate that required OpenRouter configuration is present."""
