@@ -48,7 +48,7 @@ async def run_llm_inference_worker(task_queue: str | None = None):
             format_function_result,
             notify_completion,
         ],
-        max_concurrent_activities=10,  # Allow concurrent LLM requests
+        max_concurrent_activities=100,  # Allow concurrent LLM requests
     )
 
     print("Starting LLM inference worker...")
